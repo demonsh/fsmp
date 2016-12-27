@@ -2,9 +2,10 @@ pragma solidity ^0.4.0;
 
 contract TradingContract {
 
+    //Trading contract beetween DO & DSO
     struct TContract{
 
-        uint contractId; // Try to store time (now + DO + DO hased to sha3)
+        uint id; //autoincrement
         address DO;
         address DSO;
         string ipAndPort;
@@ -15,11 +16,13 @@ contract TradingContract {
         uint weiLeftToWithdraw;
         uint withdrawAtDate;
 
-        //My
-        string ipAndPortDO;
     }
 
-  struct DataStorage{
+  //DSO Data storage owner
+  struct DataStorageOwner{
+
+    uint id; //autoincrement
+
     address ownerAddress;  // Owner Ethereum address;
 
     uint volume;
@@ -29,7 +32,11 @@ contract TradingContract {
     string ipAndPort;
   }
 
+ //DO - Data owner
   struct DataOwner{
+
+    uint id; //autoincrement
+
     address ownerAddress;  // Owner Ethereum address;
 
     uint volume;
@@ -39,9 +46,17 @@ contract TradingContract {
     string ipAndPort;
   }
 
-  DataStorage[] dataStorageList;
+
+  //List of available DSO waiting for DO proposal
+  uint storageIndex = 0;
+  DataStorageOwner[] dataStorageList;
+
+  //List of available DO waiting for DSO
+  uint ownerIndex = 0;
   DataOwner[] dataOwnerList;
 
+  //List of signed contracts between DO & DSO
+  uint tradingIndex = 0;
   TContract[] tradingList;
 
 //Can be executed by DSO only ??? how to organasi this??
@@ -54,10 +69,10 @@ contract TradingContract {
         (index,error) = findData(volume, pricePerGB);
 
         if(error){
-            dataStorageList.push(DataStorage(DSO, volume, pricePerGB, ipAndPort));
+            dataStorageList.push(DataStorageOwner(storageIndex++,DSO, volume, pricePerGB, ipAndPort));
         }else{
             tradingList.push(TContract(
-                                now,
+                                tradingIndex++,
                                 dataOwnerList[index].ownerAddress,
                                 DSO,
                                 ipAndPort,
@@ -66,8 +81,7 @@ contract TradingContract {
                                 0,
                                 pricePerGB,
                                 0,
-                                0,
-                                dataOwnerList[index].ipAndPort));
+                                0));
 
         }
 
@@ -87,10 +101,10 @@ contract TradingContract {
         (index,error) = findStorage(volume, pricePerGB);
 
         if(error){
-            dataOwnerList.push(DataOwner(DO, volume, pricePerGB, ipAndPort));
+            dataOwnerList.push(DataOwner(ownerIndex++,DO, volume, pricePerGB, ipAndPort));
         }else{
             tradingList.push(TContract(
-                                now,
+                                tradingIndex++,
                                 DO,
                                 dataStorageList[index].ownerAddress,
                                 dataStorageList[index].ipAndPort,
@@ -99,8 +113,7 @@ contract TradingContract {
                                 0,
                                 pricePerGB,
                                 0,
-                                0,
-                                ipAndPort));
+                                0));
 
         }
 
@@ -128,8 +141,20 @@ contract TradingContract {
   }
 
 //can be called by DO or DSO
-  function showMyStorageContracts() constant{
+  function showMyStorageContracts() constant returns(uint[] DOContracts, uint[] DSOContracts){
         //Probably show contracts by comma???
+        
+        // for(uint i=0; i < tradingList.length; i++){
+            
+        //     if(tradingList[i].DO == msg.sender){
+        //         DOContracts.push(tradingList[i].id);
+        //     }
+            
+        //     if(tradingList[i].DSO == msg.sender){
+        //         DSOContracts += tradingList[i].id + ",";
+        //     }
+        // }
+              
   }
 
 //this function is impossible
@@ -140,7 +165,7 @@ contract TradingContract {
 
 //// UTILITY FUNCTIONS all should be constant
 
-//Return index in dataStorageList
+//Return index from dataStorageList
 function findStorage(uint volume,uint pricePerGB) private constant returns(uint index, bool error) {
     for(uint i=0; i < dataStorageList.length ;i++){
 
@@ -153,7 +178,7 @@ function findStorage(uint volume,uint pricePerGB) private constant returns(uint 
     return (0, true);
 }
 
-//Return index in dataOwnerList
+//Return index from dataOwnerList
 function findData(uint volume,uint pricePerGB)private constant returns(uint index, bool error) {
 
     for(uint i=0; i < dataOwnerList.length;i++){
@@ -183,8 +208,9 @@ function getTradingListSize() constant returns(uint){
   return tradingList.length;
 }
 
-function getStorageById(uint index) constant returns( address ownerAddress,uint volume, uint pricePerGB,string ipAndPort){
-    return (dataStorageList[index].ownerAddress,
+function getStorageByIndex(uint index) constant returns(uint id, address ownerAddress,uint volume, uint pricePerGB,string ipAndPort){
+    return (dataStorageList[index].id,
+            dataStorageList[index].ownerAddress,
             dataStorageList[index].volume,
             dataStorageList[index].pricePerGB,
             dataStorageList[index].ipAndPort);
@@ -192,20 +218,21 @@ function getStorageById(uint index) constant returns( address ownerAddress,uint 
 
 
 
-function getDataByID(uint index) constant returns( address ownerAddress,uint volume, uint pricePerGB,string ipAndPort){
-     return (dataOwnerList[index].ownerAddress,
+function getDataByIndex(uint index) constant returns(uint id ,address ownerAddress,uint volume, uint pricePerGB,string ipAndPort){
+     return (dataOwnerList[index].id,
+             dataOwnerList[index].ownerAddress,
              dataOwnerList[index].volume,
              dataOwnerList[index].pricePerGB,
              dataOwnerList[index].ipAndPort);
 }
 
-function getContractById(uint index)constant returns(uint contractId,address DO,address DSO,string ipAndPort,
+function getContractByIndex(uint index)constant returns(uint id,address DO,address DSO,string ipAndPort,
                                                      uint volume,uint openDate,uint closeDate,uint pricePerGB,
-                                                     uint weiLeftToWithdraw,uint withdrawAtDate,string ipAndPortDO){
+                                                     uint weiLeftToWithdraw,uint withdrawAtDate){
 
     TContract trade = tradingList[index];
 
-    return (trade.contractId,
+    return (trade.id,
             trade.DO,
             trade.DSO,
             trade.ipAndPort,
@@ -214,9 +241,55 @@ function getContractById(uint index)constant returns(uint contractId,address DO,
             trade.closeDate,
             trade.pricePerGB,
             trade.weiLeftToWithdraw,
-            trade.withdrawAtDate,
-            trade.ipAndPortDO);
+            trade.withdrawAtDate);
 }
+
+//Return DO index in the dataOwnerList by it is id
+function getDataOwnerIndexById(uint id)constant returns(uint index, bool  error){
+    
+     for(uint i=0; i < dataOwnerList.length;i++){
+
+        if(dataOwnerList[i].id == id){
+            return (i, false);
+        }
+
+    }
+
+    return (0, true);
+    
+}
+
+//Return DSO index in the dataStorageList by id
+function getDataStorageOwnerIndexById(uint id)constant returns(uint index, bool  error){
+    
+     for(uint i=0; i < dataStorageList.length;i++){
+
+        if(dataStorageList[i].id == id){
+            return (i, false);
+        }
+
+    }
+
+    return (0, true);
+    
+}
+
+//Return contract index by it is id
+function getTContractIndexById(uint id)constant returns(uint index, bool  error){
+    
+     for(uint i=0; i < dataStorageList.length;i++){
+
+        if(dataStorageList[i].id == id){
+            return (i, false);
+        }
+
+    }
+
+    return (0, true);
+    
+}
+
+
 
 
 }
